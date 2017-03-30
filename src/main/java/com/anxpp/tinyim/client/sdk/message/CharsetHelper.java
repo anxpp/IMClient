@@ -1,4 +1,4 @@
-package com.anxpp.tinyim.client.sdk.protocal;
+package com.anxpp.tinyim.client.sdk.message;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;

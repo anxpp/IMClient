@@ -1,7 +1,7 @@
 package com.anxpp.tinyim.client.sdk.core;
 
 import com.anxpp.tinyim.client.ClientCoreSDK;
-import com.anxpp.tinyim.client.sdk.protocal.Protocal;
+import com.anxpp.tinyim.client.sdk.message.Message;
 import com.anxpp.tinyim.client.sdk.utils.Log;
 
 import javax.swing.*;
@@ -99,7 +99,7 @@ public class QoS4ReciveDaemon {
         return this.running;
     }
 
-    public void addRecieved(Protocal p) {
+    public void addRecieved(Message p) {
         if ((p != null) && (p.isQoS()))
             addRecieved(p.getFp());
     }

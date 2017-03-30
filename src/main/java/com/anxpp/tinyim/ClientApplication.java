@@ -5,12 +5,15 @@ import com.anxpp.tinyim.client.ClientCoreSDK;
 import com.anxpp.tinyim.client.sdk.ChatTransDataEventImpl;
 import com.anxpp.tinyim.client.sdk.MessageQoSEventImpl;
 import com.anxpp.tinyim.client.sdk.conf.ConfigEntity;
-import com.anxpp.tinyim.client.sdk.core.LocalUDPDataSender;
+import com.anxpp.tinyim.client.sdk.core.MessageSender;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 
+@EnableScheduling
 @SpringBootApplication
 public class ClientApplication {
 
@@ -18,6 +21,7 @@ public class ClientApplication {
         SpringApplication.run(ClientApplication.class, args);
     }
 
+    //客户端测试
     @Bean
     CommandLineRunner start() {
         return args -> {
@@ -30,18 +34,24 @@ public class ClientApplication {
             ClientCoreSDK.getInstance().setChatTransDataEvent(new ChatTransDataEventImpl());
             ClientCoreSDK.getInstance().setMessageQoSEvent(new MessageQoSEventImpl());
             login();
-            sendMsg();
-            sendMsg();
-            sendMsg();
-            sendMsg();
         };
+    }
+
+    @Scheduled(cron = "0/10 * *  * * ? ")
+    public void messageSendTask() {
+        int i = 0;
+        while (i++ < 100) {
+            int currentUserId = ClientCoreSDK.getInstance().getCurrentUserId();
+            if (currentUserId > 0)
+                sendMsg(currentUserId, "消息" + i);
+        }
     }
 
     /**
      * 登陆
      */
     private void login() {
-        new LocalUDPDataSender.SendLoginDataAsync("10003", "password") {
+        new MessageSender.SendLoginDataAsync("10002", "password") {
             @Override
             protected void fireAfterSendLogin(int code) {
                 System.out.println(code == 0 ? "login success" : "login Failed:" + code);
@@ -52,8 +62,8 @@ public class ClientApplication {
     /**
      * 发送消息
      */
-    private void sendMsg() {
-        new LocalUDPDataSender.SendCommonDataAsync("88888888888888888888888888888888888888888888888888888888888", 10001, true) {
+    private void sendMsg(int toUserId, String message) {
+        new MessageSender.SendCommonDataAsync(message, toUserId, true) {
             @Override
             protected void onPostExecute(Integer code) {
                 System.out.println(code == 0 ? "send success" : "send Failed:" + code);

@@ -61,11 +61,11 @@ public class ClientCoreSDK {
         // 尝试停掉Keep Alive心跳线程
         KeepAliveDaemon.getInstance().stop();
         // 尝试停掉消息接收者
-        LocalUDPDataReceiver.getInstance().stop();
+        MessageReceiver.getInstance().stop();
         // 尝试停掉QoS质量保证（接收防重复机制）心跳线程
         QoS4ReciveDaemon.getInstance().stop();
         // 尝试关闭本地Socket
-        LocalUDPSocketProvider.getInstance().closeLocalUDPSocket();
+        SocketProvider.getInstance().closeLocalUDPSocket();
 
         this._init = false;
 

@@ -6,14 +6,14 @@ import com.anxpp.tinyim.client.sdk.utils.Log;
 
 import java.net.DatagramSocket;
 
-public class LocalUDPSocketProvider {
-    private static final String TAG = LocalUDPSocketProvider.class.getSimpleName();
-    private static LocalUDPSocketProvider instance = null;
+public class SocketProvider {
+    private static final String TAG = SocketProvider.class.getSimpleName();
+    private static SocketProvider instance = null;
     private DatagramSocket localUDPSocket = null;
 
-    public static LocalUDPSocketProvider getInstance() {
+    public static SocketProvider getInstance() {
         if (instance == null)
-            instance = new LocalUDPSocketProvider();
+            instance = new SocketProvider();
         return instance;
     }
 

@@ -1,11 +1,11 @@
 package com.anxpp.tinyim.client.sdk.event;
 
-import com.anxpp.tinyim.client.sdk.protocal.Protocal;
+import com.anxpp.tinyim.client.sdk.message.Message;
 
 import java.util.ArrayList;
 
-public abstract interface MessageQoSEvent {
-    public abstract void messagesLost(ArrayList<Protocal> paramArrayList);
+public interface MessageQoSEvent {
+    void messagesLost(ArrayList<Message> paramArrayList);
 
-    public abstract void messagesBeReceived(String paramString);
+    void messagesBeReceived(String paramString);
 }

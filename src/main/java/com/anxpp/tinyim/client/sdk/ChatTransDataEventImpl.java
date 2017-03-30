@@ -9,13 +9,13 @@ import com.anxpp.tinyim.client.sdk.event.ChatTransDataEvent;
 public class ChatTransDataEventImpl implements ChatTransDataEvent {
     // 收到即时通讯消息通知
     @Override
-    public void onTransBuffer(String fingerPrintOfProtocal, int dwUserid, String dataContent) {
-        System.out.println("收到来自用户" + dwUserid + "的消息:" + dataContent);
+    public void onTransBuffer(String fingerPrintOfProtocal, int fromUserId, String dataContent) {
+        System.out.println("message from " + fromUserId + ":" + dataContent);
     }
 
     // 收到服务端反馈的错误信息通知
     @Override
     public void onErrorResponse(int errorCode, String errorMsg) {
-        System.out.println("收到服务端错误消息，errorCode=" + errorCode + ", errorMsg=" + errorMsg);
+        System.out.println("error message from server,errorCode=" + errorCode + ", errorMsg=" + errorMsg);
     }
 }

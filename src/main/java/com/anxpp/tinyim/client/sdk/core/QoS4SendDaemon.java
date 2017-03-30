@@ -1,7 +1,7 @@
 package com.anxpp.tinyim.client.sdk.core;
 
 import com.anxpp.tinyim.client.ClientCoreSDK;
-import com.anxpp.tinyim.client.sdk.protocal.Protocal;
+import com.anxpp.tinyim.client.sdk.message.Message;
 import com.anxpp.tinyim.client.sdk.utils.Log;
 
 import javax.swing.*;
@@ -15,7 +15,7 @@ public class QoS4SendDaemon {
     private static final int QOS_TRY_COUNT = 3;
     private static QoS4SendDaemon instance = null;
     // 并发Hash，因为本类中可能存在不同的线程同时remove或遍历之
-    private ConcurrentHashMap<String, Protocal> sentMessages = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Message> sentMessages = new ConcurrentHashMap<>();
     // 并发Hash，因为本类中可能存在不同的线程同时remove或遍历之
     private ConcurrentHashMap<String, Long> sendMessagesTimestamp = new ConcurrentHashMap<>();
     private boolean running = false;
@@ -41,7 +41,7 @@ public class QoS4SendDaemon {
         // 极端情况下本次循环内可能执行时间超过了时间间隔，此处是防止在前一
         // 次还没有运行完的情况下又重复执行，从而出现无法预知的错误
         if (!this._excuting) {
-            ArrayList<Protocal> lostMessages = new ArrayList<>();
+            ArrayList<Message> lostMessages = new ArrayList<>();
 
             this._excuting = true;
             try {
@@ -50,7 +50,7 @@ public class QoS4SendDaemon {
                 }
 
                 for (String key : this.sentMessages.keySet()) {
-                    Protocal p = this.sentMessages.get(key);
+                    Message p = this.sentMessages.get(key);
                     if ((p != null) && (p.isQoS())) {
                         if (p.getRetryCount() >= QOS_TRY_COUNT) {
                             if (ClientCoreSDK.DEBUG) {
@@ -58,7 +58,7 @@ public class QoS4SendDaemon {
                                         "的消息包重传次数已达" + p.getRetryCount() + "(最多" + QOS_TRY_COUNT + "次)上限，将判定为丢包！");
                             }
 
-                            lostMessages.add((Protocal) p.clone());
+                            lostMessages.add((Message) p.clone());
 
                             remove(p.getFp());
                         } else {
@@ -70,7 +70,7 @@ public class QoS4SendDaemon {
                                             "ms(<=" + MESSAGES_JUST$NOW_TIME + "ms将被认定是\"刚刚\"), 本次不需要重传哦.");
                                 }
                             } else {
-                                new LocalUDPDataSender.SendCommonDataAsync(p) {
+                                new MessageSender.SendCommonDataAsync(p) {
                                     protected void onPostExecute(Integer code) {
                                         if (code == 0) {
                                             this.p.increaseRetryCount();
@@ -107,7 +107,7 @@ public class QoS4SendDaemon {
         }
     }
 
-    private void notifyMessageLost(ArrayList<Protocal> lostMessages) {
+    private void notifyMessageLost(ArrayList<Message> lostMessages) {
         if (ClientCoreSDK.getInstance().getMessageQoSEvent() != null) {
             ClientCoreSDK.getInstance().getMessageQoSEvent().messagesLost(lostMessages);
         }
@@ -141,7 +141,7 @@ public class QoS4SendDaemon {
         return this.sentMessages.get(fingerPrint) != null;
     }
 
-    void put(Protocal p) {
+    void put(Message p) {
         if (p == null) {
             Log.w(TAG, "Invalid arg p==null.");
             return;
@@ -152,7 +152,7 @@ public class QoS4SendDaemon {
         }
 
         if (!p.isQoS()) {
-            Log.w(TAG, "This protocal is not QoS pkg, ignore it!");
+            Log.w(TAG, "This message is not QoS pkg, ignore it!");
             return;
         }
 
@@ -167,16 +167,16 @@ public class QoS4SendDaemon {
     }
 
     void remove(final String fingerPrint) {
-        new SwingWorker<Protocal, Object>() {
+        new SwingWorker<Message, Object>() {
             @Override
-            protected Protocal doInBackground() {
+            protected Message doInBackground() {
                 sendMessagesTimestamp.remove(fingerPrint);
                 return sentMessages.remove(fingerPrint);
             }
 
             @Override
             protected void done() {
-                Protocal result = null;
+                Message result = null;
                 try {
                     result = get();
                 } catch (Exception e) {

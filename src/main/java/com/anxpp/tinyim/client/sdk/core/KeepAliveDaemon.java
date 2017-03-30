@@ -51,7 +51,7 @@ public class KeepAliveDaemon {
             this._excuting = true;
             if (ClientCoreSDK.DEBUG)
                 Log.i(TAG, "【IMCORE】心跳线程执行中...");
-            int code = LocalUDPDataSender.getInstance().sendKeepAlive();
+            int code = MessageSender.getInstance().sendKeepAlive();
 
             boolean isInitialedForKeepAlive = this.lastGetKeepAliveResponseFromServerTimstamp == 0L;
             if ((code == 0) && (this.lastGetKeepAliveResponseFromServerTimstamp == 0L)) {

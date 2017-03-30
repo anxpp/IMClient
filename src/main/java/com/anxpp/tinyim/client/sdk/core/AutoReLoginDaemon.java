@@ -36,17 +36,17 @@ public class AutoReLoginDaemon {
             int code = -1;
             // 是否允许自动重新登陆哦
             if (ClientCoreSDK.autoReLogin) {
-                LocalUDPSocketProvider.getInstance().closeLocalUDPSocket();
+                SocketProvider.getInstance().closeLocalUDPSocket();
 
                 // 发送重登陆请求
-                code = LocalUDPDataSender.getInstance().sendLogin(
+                code = MessageSender.getInstance().sendLogin(
                         ClientCoreSDK.getInstance().getCurrentLoginName()
                         , ClientCoreSDK.getInstance().getCurrentLoginPsw()
                         , ClientCoreSDK.getInstance().getCurrentLoginExtra());
             }
 
             if (code == 0) {
-                LocalUDPDataReceiver.getInstance().startup();
+                MessageReceiver.getInstance().startup();
             }
 
             this._excuting = false;

@@ -1,10 +1,10 @@
-package com.anxpp.tinyim.client.sdk.protocal.s;
+package com.anxpp.tinyim.client.sdk.message.server;
 
-public class PErrorResponse {
+public class ErrorResponse {
     private int errorCode = -1;
     private String errorMsg = null;
 
-    public PErrorResponse(int errorCode, String errorMsg) {
+    public ErrorResponse(int errorCode, String errorMsg) {
         this.errorCode = errorCode;
         this.errorMsg = errorMsg;
     }

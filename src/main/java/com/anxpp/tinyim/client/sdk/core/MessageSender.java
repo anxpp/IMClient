@@ -2,10 +2,10 @@ package com.anxpp.tinyim.client.sdk.core;
 
 import com.anxpp.tinyim.client.ClientCoreSDK;
 import com.anxpp.tinyim.client.sdk.conf.ConfigEntity;
-import com.anxpp.tinyim.client.sdk.protocal.CharsetHelper;
-import com.anxpp.tinyim.client.sdk.protocal.ErrorCode;
-import com.anxpp.tinyim.client.sdk.protocal.Protocal;
-import com.anxpp.tinyim.client.sdk.protocal.ProtocalFactory;
+import com.anxpp.tinyim.client.sdk.message.CharsetHelper;
+import com.anxpp.tinyim.client.sdk.message.StatusCode;
+import com.anxpp.tinyim.client.sdk.message.Message;
+import com.anxpp.tinyim.client.sdk.message.MessageFactory;
 import com.anxpp.tinyim.client.sdk.utils.Log;
 import com.anxpp.tinyim.client.sdk.utils.UDPUtils;
 
@@ -13,34 +13,45 @@ import javax.swing.*;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
-public class LocalUDPDataSender {
-    private static final String TAG = LocalUDPDataSender.class.getSimpleName();
-    private static LocalUDPDataSender instance = null;
+public class MessageSender {
+    private static final String TAG = MessageSender.class.getSimpleName();
+    private static MessageSender instance = null;
 
-    public static LocalUDPDataSender getInstance() {
+    public static MessageSender getInstance() {
         if (instance == null)
-            instance = new LocalUDPDataSender();
+            instance = new MessageSender();
         return instance;
     }
 
-    int sendLogin(String loginName, String loginPsw, String extra) {
-        byte[] b = ProtocalFactory.createPLoginInfo(loginName, loginPsw, extra).toBytes();
-        int code = send(b, b.length);
+    /**
+     * 登陆
+     *
+     * @param username 用户名
+     * @param password 密码
+     * @param extra    额外信息
+     * @return 状态吗
+     */
+    int sendLogin(String username, String password, String extra) {
+        byte[] bytes = MessageFactory.createPLoginInfo(username, password, extra).toBytes();
+        int code = send(bytes, bytes.length);
         // 登陆信息成功发出时就把登陆名存下来
         if (code == 0) {
-            ClientCoreSDK.getInstance().setCurrentLoginName(loginName);
-            ClientCoreSDK.getInstance().setCurrentLoginPsw(loginPsw);
+            ClientCoreSDK.getInstance().setCurrentLoginName(username);
+            ClientCoreSDK.getInstance().setCurrentLoginPsw(password);
             ClientCoreSDK.getInstance().setCurrentLoginExtra(extra);
         }
-
         return code;
     }
 
+    /**
+     * 登出
+     *
+     * @return 状态
+     */
     public int sendLoginout() {
-        int code = ErrorCode.COMMON_CODE_OK;
+        int code = StatusCode.COMMON_CODE_OK;
         if (ClientCoreSDK.getInstance().isLoginHasInit()) {
-            byte[] b = ProtocalFactory.createPLoginoutInfo(ClientCoreSDK.getInstance().getCurrentUserId()
-                    , ClientCoreSDK.getInstance().getCurrentLoginName()).toBytes();
+            byte[] b = MessageFactory.createLogoutInfo(ClientCoreSDK.getInstance().getCurrentUserId(), ClientCoreSDK.getInstance().getCurrentLoginName()).toBytes();
             code = send(b, b.length);
             // 登出信息成功发出时
             if (code == 0) {
@@ -50,15 +61,18 @@ public class LocalUDPDataSender {
                 //			ClientCoreSDK.getInstance().setLoginHasInit(false);
             }
         }
-
         // 释放SDK资源
         ClientCoreSDK.getInstance().release();
-
         return code;
     }
 
+    /**
+     * 心跳消息
+     *
+     * @return 状态
+     */
     int sendKeepAlive() {
-        byte[] b = ProtocalFactory.createPKeepAlive(ClientCoreSDK.getInstance().getCurrentUserId()).toBytes();
+        byte[] b = MessageFactory.createPKeepAlive(ClientCoreSDK.getInstance().getCurrentUserId()).toBytes();
         return send(b, b.length);
     }
 
@@ -71,16 +85,15 @@ public class LocalUDPDataSender {
     }
 
     public int sendCommonData(String dataContentWidthStr, int to_user_id) {
-        return sendCommonData(ProtocalFactory.createCommonData(dataContentWidthStr,
+        return sendCommonData(MessageFactory.createCommonData(dataContentWidthStr,
                 ClientCoreSDK.getInstance().getCurrentUserId(), to_user_id));
     }
 
     public int sendCommonData(String dataContentWidthStr, int to_user_id, boolean QoS, String fingerPrint) {
-        return sendCommonData(ProtocalFactory.createCommonData(dataContentWidthStr,
-                ClientCoreSDK.getInstance().getCurrentUserId(), to_user_id, QoS, fingerPrint));
+        return sendCommonData(MessageFactory.createCommonData(dataContentWidthStr, ClientCoreSDK.getInstance().getCurrentUserId(), to_user_id, QoS, fingerPrint));
     }
 
-    public int sendCommonData(Protocal p) {
+    public int sendCommonData(Message p) {
         if (p != null) {
             byte[] b = p.toBytes();
             int code = send(b, b.length);
@@ -91,33 +104,32 @@ public class LocalUDPDataSender {
             return code;
         }
 
-        return ErrorCode.COMMON_INVALID_PROTOCAL;
+        return StatusCode.COMMON_INVALID_PROTOCAL;
     }
 
     private int send(byte[] fullProtocalBytes, int dataLen) {
         if (!ClientCoreSDK.getInstance().isInitialed())
-            return ErrorCode.ForC.CLIENT_SDK_NO_INITIALED;
-
-        DatagramSocket ds = LocalUDPSocketProvider.getInstance().getLocalUDPSocket();
+            return StatusCode.ForC.CLIENT_SDK_NO_INITIALED;
+        DatagramSocket ds = SocketProvider.getInstance().getLocalUDPSocket();
         // 如果Socket没有连接上服务端
         if (ds != null && !ds.isConnected()) {
             try {
                 if (ConfigEntity.serverIP == null) {
                     Log.w(TAG, "【IMCORE】send数据没有继续，原因是ConfigEntity.server_ip==null!");
-                    return ErrorCode.ForC.TO_SERVER_NET_INFO_NOT_SETUP;
+                    return StatusCode.ForC.TO_SERVER_NET_INFO_NOT_SETUP;
                 }
 
                 ds.connect(InetAddress.getByName(ConfigEntity.serverIP), ConfigEntity.serverUDPPort);
             } catch (Exception e) {
                 Log.w(TAG, "【IMCORE】send时出错，原因是：" + e.getMessage(), e);
-                return ErrorCode.ForC.BAD_CONNECT_TO_SERVER;
+                return StatusCode.ForC.BAD_CONNECT_TO_SERVER;
             }
         }
-        return UDPUtils.send(ds, fullProtocalBytes, dataLen) ? ErrorCode.COMMON_CODE_OK : ErrorCode.COMMON_DATA_SEND_FAILD;
+        return UDPUtils.send(ds, fullProtocalBytes, dataLen) ? StatusCode.COMMON_CODE_OK : StatusCode.COMMON_DATA_SEND_FAILD;
     }
 
     public static abstract class SendCommonDataAsync extends SwingWorker<Integer, Object> {
-        protected Protocal p = null;
+        protected Message p = null;
 
         public SendCommonDataAsync(byte[] dataContent, int dataLen, int to_user_id) {
             this(CharsetHelper.getString(dataContent, dataLen), to_user_id);
@@ -128,18 +140,18 @@ public class LocalUDPDataSender {
         }
 
         public SendCommonDataAsync(String dataContentWidthStr, int to_user_id, boolean QoS, String fingerPrint) {
-            this(ProtocalFactory.createCommonData(dataContentWidthStr,
+            this(MessageFactory.createCommonData(dataContentWidthStr,
                     ClientCoreSDK.getInstance().getCurrentUserId(), to_user_id, QoS, fingerPrint));
         }
 
         public SendCommonDataAsync(String dataContentWidthStr, int to_user_id) {
-            this(ProtocalFactory.createCommonData(dataContentWidthStr,
+            this(MessageFactory.createCommonData(dataContentWidthStr,
                     ClientCoreSDK.getInstance().getCurrentUserId(), to_user_id));
         }
 
-        public SendCommonDataAsync(Protocal p) {
+        public SendCommonDataAsync(Message p) {
             if (p == null) {
-                Log.w(LocalUDPDataSender.TAG, "【IMCORE】无效的参数p==null!");
+                Log.w(MessageSender.TAG, "【IMCORE】无效的参数p==null!");
                 return;
             }
             this.p = p;
@@ -147,7 +159,7 @@ public class LocalUDPDataSender {
 
         protected Integer doInBackground() {
             if (this.p != null)
-                return Integer.valueOf(LocalUDPDataSender.getInstance().sendCommonData(this.p));
+                return Integer.valueOf(MessageSender.getInstance().sendCommonData(this.p));
             return Integer.valueOf(-1);
         }
 
@@ -156,7 +168,7 @@ public class LocalUDPDataSender {
             try {
                 code = ((Integer) get()).intValue();
             } catch (Exception e) {
-                Log.w(LocalUDPDataSender.TAG, e.getMessage());
+                Log.w(MessageSender.TAG, e.getMessage());
             }
 
             onPostExecute(Integer.valueOf(code));
@@ -183,26 +195,26 @@ public class LocalUDPDataSender {
         }
 
         protected Integer doInBackground() {
-            int code = LocalUDPDataSender.getInstance().sendLogin(this.loginName, this.loginPsw, this.extra);
-            return Integer.valueOf(code);
+            int code = MessageSender.getInstance().sendLogin(this.loginName, this.loginPsw, this.extra);
+            return code;
         }
 
         protected void done() {
             int code = -1;
             try {
-                code = ((Integer) get()).intValue();
+                code = get();
             } catch (Exception e) {
-                Log.w(LocalUDPDataSender.TAG, e.getMessage());
+                Log.w(MessageSender.TAG, e.getMessage());
             }
 
-            onPostExecute(Integer.valueOf(code));
+            onPostExecute(code);
         }
 
         protected void onPostExecute(Integer code) {
             if (code.intValue() == 0) {
-                LocalUDPDataReceiver.getInstance().startup();
+                MessageReceiver.getInstance().startup();
             } else {
-                Log.d(LocalUDPDataSender.TAG, "【IMCORE】数据发送失败, 错误码是：" + code + "！");
+                Log.d(MessageSender.TAG, "【IMCORE】数据发送失败, 错误码是：" + code + "！");
             }
 
             fireAfterSendLogin(code.intValue());

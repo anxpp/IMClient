@@ -1,6 +1,6 @@
-package com.anxpp.tinyim.client.sdk.protocal;
+package com.anxpp.tinyim.client.sdk.message;
 
-public interface ErrorCode {
+public interface StatusCode {
     int COMMON_CODE_OK = 0;
     int COMMON_NO_LOGIN = 1;
     int COMMON_UNKNOW_ERROR = 2;
