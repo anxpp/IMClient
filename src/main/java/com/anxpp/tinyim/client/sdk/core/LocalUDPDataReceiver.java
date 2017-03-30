@@ -12,17 +12,15 @@ import com.anxpp.tinyim.client.sdk.utils.Log;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
-public class LocalUDPDataReciever {
-    private static final String TAG = LocalUDPDataReciever.class.getSimpleName();
-
+public class LocalUDPDataReceiver {
+    private static final String TAG = LocalUDPDataReceiver.class.getSimpleName();
+    private static LocalUDPDataReceiver instance = null;
+    private static MessageHandler messageHandler = null;
     private Thread thread = null;
 
-    private static LocalUDPDataReciever instance = null;
-    private static MessageHandler messageHandler = null;
-
-    public static LocalUDPDataReciever getInstance() {
+    public static LocalUDPDataReceiver getInstance() {
         if (instance == null) {
-            instance = new LocalUDPDataReciever();
+            instance = new LocalUDPDataReceiver();
             messageHandler = new MessageHandler();
         }
         return instance;
@@ -41,13 +39,13 @@ public class LocalUDPDataReciever {
             this.thread = new Thread(() -> {
                 try {
                     if (ClientCoreSDK.DEBUG) {
-                        Log.d(LocalUDPDataReciever.TAG, "【IMCORE】本地UDP端口侦听中，端口=" + ConfigEntity.localUDPPort + "...");
+                        Log.d(LocalUDPDataReceiver.TAG, "【IMCORE】本地UDP端口侦听中，端口=" + ConfigEntity.localUDPPort + "...");
                     }
 
                     //开始侦听
-                    LocalUDPDataReciever.this.p2pListeningImpl();
+                    LocalUDPDataReceiver.this.p2pListeningImpl();
                 } catch (Exception eee) {
-                    Log.w(LocalUDPDataReciever.TAG, "【IMCORE】本地UDP监听停止了(socket被关闭了?)," + eee.getMessage(), eee);
+                    Log.w(LocalUDPDataReceiver.TAG, "【IMCORE】本地UDP监听停止了(socket被关闭了?)," + eee.getMessage(), eee);
                 }
             });
             this.thread.start();
@@ -85,7 +83,7 @@ public class LocalUDPDataReciever {
                 if (pFromServer.isQoS()) {
                     if (QoS4ReciveDaemon.getInstance().hasRecieved(pFromServer.getFp())) {
                         if (ClientCoreSDK.DEBUG) {
-                            Log.d(LocalUDPDataReciever.TAG, "【IMCORE】【QoS机制】" + pFromServer.getFp() + "已经存在于发送列表中，这是重复包，通知应用层收到该包罗！");
+                            Log.d(LocalUDPDataReceiver.TAG, "【IM CORE】【QoS机制】" + pFromServer.getFp() + "已经存在于发送列表中，这是重复包，通知应用层收到该包罗！");
                         }
 
                         QoS4ReciveDaemon.getInstance().addRecieved(pFromServer);
@@ -108,7 +106,7 @@ public class LocalUDPDataReciever {
                     }
                     case ProtocalType.S.FROM_SERVER_TYPE_OF_RESPONSE$KEEP$ALIVE: {
                         if (ClientCoreSDK.DEBUG) {
-                            Log.p(LocalUDPDataReciever.TAG, "【IMCORE】收到服务端回过来的Keep Alive心跳响应包.");
+                            Log.p(LocalUDPDataReceiver.TAG, "【IM CORE】收到服务端回过来的Keep Alive心跳响应包.");
                         }
                         KeepAliveDaemon.getInstance().updateGetKeepAliveResponseFromServerTimstamp();
                         break;
@@ -116,7 +114,7 @@ public class LocalUDPDataReciever {
                     case ProtocalType.C.FROM_CLIENT_TYPE_OF_RECIVED: {
                         String theFingerPrint = pFromServer.getDataContent();
                         if (ClientCoreSDK.DEBUG) {
-                            Log.i(LocalUDPDataReciever.TAG, "【IMCORE】【QoS】收到" + pFromServer.getFrom() + "发过来的指纹为" + theFingerPrint + "的应答包.");
+                            Log.i(LocalUDPDataReceiver.TAG, "【IM CORE】【QoS】收到" + pFromServer.getFrom() + "发过来的指纹为" + theFingerPrint + "的应答包.");
                         }
 
                         if (ClientCoreSDK.getInstance().getMessageQoSEvent() != null) {
@@ -168,7 +166,7 @@ public class LocalUDPDataReciever {
                         if (errorRes.getErrorCode() == 301) {
                             ClientCoreSDK.getInstance().setLoginHasInit(false);
 
-                            Log.e(LocalUDPDataReciever.TAG, "【IMCORE】收到服务端的“尚未登陆”的错误消息，心跳线程将停止，请应用层重新登陆.");
+                            Log.e(LocalUDPDataReceiver.TAG, "【IMCORE】收到服务端的“尚未登陆”的错误消息，心跳线程将停止，请应用层重新登陆.");
 
                             KeepAliveDaemon.getInstance().stop();
                             AutoReLoginDaemon.getInstance().start(false);
@@ -182,10 +180,10 @@ public class LocalUDPDataReciever {
                         break;
                     }
                     default:
-                        Log.w(LocalUDPDataReciever.TAG, "【IMCORE】收到的服务端消息类型：" + pFromServer.getType() + "，但目前该类型客户端不支持解析和处理！");
+                        Log.w(LocalUDPDataReceiver.TAG, "【IM CORE】收到的服务端消息类型：" + pFromServer.getType() + "，但目前该类型客户端不支持解析和处理！");
                 }
             } catch (Exception e) {
-                Log.w(LocalUDPDataReciever.TAG, "【IMCORE】处理消息的过程中发生了错误.", e);
+                Log.w(LocalUDPDataReceiver.TAG, "【IM CORE】处理消息的过程中发生了错误.", e);
             }
         }
 
@@ -199,11 +197,11 @@ public class LocalUDPDataReciever {
                     @Override
                     protected void onPostExecute(Integer code) {
                         if (ClientCoreSDK.DEBUG)
-                            Log.d(TAG, "【IMCORE】【QoS】向" + pFromServer.getFrom() + "发送" + pFromServer.getFp() + "包的应答包成功,from=" + pFromServer.getTo() + "！");
+                            Log.d(TAG, "【IM CORE】【QoS】向" + pFromServer.getFrom() + "发送" + pFromServer.getFp() + "包的应答包成功,from=" + pFromServer.getTo() + "！");
                     }
                 }.execute();
             } else {
-                Log.w(TAG, "【IMCORE】【QoS】收到" + pFromServer.getFrom() + "发过来需要QoS的包，但它的指纹码却为null！无法发应答包！");
+                Log.w(TAG, "【IM CORE】【QoS】收到" + pFromServer.getFrom() + "发过来需要QoS的包，但它的指纹码却为null！无法发应答包！");
             }
         }
     }

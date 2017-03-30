@@ -6,85 +6,67 @@ import com.anxpp.tinyim.client.sdk.utils.Log;
 
 import java.net.DatagramSocket;
 
-public class LocalUDPSocketProvider
-{
-	private static final String TAG = LocalUDPSocketProvider.class.getSimpleName();
+public class LocalUDPSocketProvider {
+    private static final String TAG = LocalUDPSocketProvider.class.getSimpleName();
+    private static LocalUDPSocketProvider instance = null;
+    private DatagramSocket localUDPSocket = null;
 
-	private DatagramSocket localUDPSocket = null;
+    public static LocalUDPSocketProvider getInstance() {
+        if (instance == null)
+            instance = new LocalUDPSocketProvider();
+        return instance;
+    }
 
-	private static LocalUDPSocketProvider instance = null;
+    private DatagramSocket resetLocalUDPSocket() {
+        try {
+            closeLocalUDPSocket();
+            if (ClientCoreSDK.DEBUG)
+                Log.d(TAG, "【IMCORE】new DatagramSocket()中...");
+            this.localUDPSocket = (ConfigEntity.localUDPPort == 0 ?
+                    new DatagramSocket() : new DatagramSocket(ConfigEntity.localUDPPort));
+            this.localUDPSocket.setReuseAddress(true);
+            if (ClientCoreSDK.DEBUG) {
+                Log.d(TAG, "【IMCORE】new DatagramSocket()已成功完成.");
+            }
 
-	public static LocalUDPSocketProvider getInstance()
-	{
-		if (instance == null)
-			instance = new LocalUDPSocketProvider();
-		return instance;
-	}
+            return this.localUDPSocket;
+        } catch (Exception e) {
+            Log.w(TAG, "【IMCORE】localUDPSocket创建时出错，原因是：" + e.getMessage(), e);
 
-	private DatagramSocket resetLocalUDPSocket()
-	{
-		try
-		{
-			closeLocalUDPSocket();
-			if (ClientCoreSDK.DEBUG)
-				Log.d(TAG, "【IMCORE】new DatagramSocket()中...");
-			this.localUDPSocket = (ConfigEntity.localUDPPort == 0 ?
-					new DatagramSocket() : new DatagramSocket(ConfigEntity.localUDPPort));
-			this.localUDPSocket.setReuseAddress(true);
-			if (ClientCoreSDK.DEBUG) {
-				Log.d(TAG, "【IMCORE】new DatagramSocket()已成功完成.");
-			}
+            closeLocalUDPSocket();
+        }
 
-			return this.localUDPSocket;
-		}
-		catch (Exception e)
-		{
-			Log.w(TAG, "【IMCORE】localUDPSocket创建时出错，原因是：" + e.getMessage(), e);
+        return null;
+    }
 
-			closeLocalUDPSocket();
-		}
-		
-		return null;
-	}
+    private boolean isLocalUDPSocketReady() {
+        return (this.localUDPSocket != null) && (!this.localUDPSocket.isClosed());
+    }
 
-	private boolean isLocalUDPSocketReady()
-	{
-		return (this.localUDPSocket != null) && (!this.localUDPSocket.isClosed());
-	}
+    public DatagramSocket getLocalUDPSocket() {
+        if (isLocalUDPSocketReady()) {
+            if (ClientCoreSDK.DEBUG)
+                Log.d(TAG, "【IMCORE】isLocalUDPSocketReady()==true，直接返回本地socket引用哦。");
+            return this.localUDPSocket;
+        }
 
-	public DatagramSocket getLocalUDPSocket()
-	{
-		if (isLocalUDPSocketReady())
-		{
-			if (ClientCoreSDK.DEBUG)
-				Log.d(TAG, "【IMCORE】isLocalUDPSocketReady()==true，直接返回本地socket引用哦。");
-			return this.localUDPSocket;
-		}
+        if (ClientCoreSDK.DEBUG)
+            Log.d(TAG, "【IMCORE】isLocalUDPSocketReady()==false，需要先resetLocalUDPSocket()...");
+        return resetLocalUDPSocket();
+    }
 
-		if (ClientCoreSDK.DEBUG)
-			Log.d(TAG, "【IMCORE】isLocalUDPSocketReady()==false，需要先resetLocalUDPSocket()...");
-		return resetLocalUDPSocket();
-	}
-
-	public void closeLocalUDPSocket()
-	{
-		try
-		{
-			if (ClientCoreSDK.DEBUG)
-				Log.d(TAG, "【IMCORE】正在closeLocalUDPSocket()...");
-			if (this.localUDPSocket != null)
-			{
-				this.localUDPSocket.close();
-				this.localUDPSocket = null;
-			}
-			else
-			{
-				Log.d(TAG, "【IMCORE】Socket处于未初化状态（可能是您还未登陆），无需关闭。");
-			}
-		}
-		catch (Exception e)
-		{
-			Log.w(TAG, "【IMCORE】lcloseLocalUDPSocket时出错，原因是：" + e.getMessage(), e);
-		}
-	}
+    public void closeLocalUDPSocket() {
+        try {
+            if (ClientCoreSDK.DEBUG)
+                Log.d(TAG, "【IMCORE】正在closeLocalUDPSocket()...");
+            if (this.localUDPSocket != null) {
+                this.localUDPSocket.close();
+                this.localUDPSocket = null;
+            } else {
+                Log.d(TAG, "【IMCORE】Socket处于未初化状态（可能是您还未登陆），无需关闭。");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "【IMCORE】lcloseLocalUDPSocket时出错，原因是：" + e.getMessage(), e);
+        }
+    }
 }

@@ -3,129 +3,110 @@ package com.anxpp.tinyim.client.sdk.core;
 import com.anxpp.tinyim.client.ClientCoreSDK;
 import com.anxpp.tinyim.client.sdk.utils.Log;
 
+import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Observer;
-import javax.swing.Timer;
 
-public class KeepAliveDaemon
-{
-	private static final String TAG = KeepAliveDaemon.class.getSimpleName();
+public class KeepAliveDaemon {
+    private static final String TAG = KeepAliveDaemon.class.getSimpleName();
 
-	public static int NETWORK_CONNECTION_TIME_OUT = 10000;
+    public static int NETWORK_CONNECTION_TIME_OUT = 10000;
 
-	public static int KEEP_ALIVE_INTERVAL = 3000;
+    public static int KEEP_ALIVE_INTERVAL = 3000;
+    private static KeepAliveDaemon instance = null;
+    private boolean keepAliveRunning = false;
+    // 记录最近一次服务端的心跳响应包时间
+    private long lastGetKeepAliveResponseFromServerTimstamp = 0L;
+    private Observer networkConnectionLostObserver = null;
 
-	private boolean keepAliveRunning = false;
+    private boolean _excuting = false;
 
-	// 记录最近一次服务端的心跳响应包时间
-	private long lastGetKeepAliveResponseFromServerTimstamp = 0L;
+    private Timer timer = null;
 
-	private static KeepAliveDaemon instance = null;
+    private KeepAliveDaemon() {
+        init();
+    }
 
-	private Observer networkConnectionLostObserver = null;
+    public static KeepAliveDaemon getInstance() {
+        if (instance == null)
+            instance = new KeepAliveDaemon();
+        return instance;
+    }
 
-	private boolean _excuting = false;
+    private void init() {
+        this.timer = new Timer(KEEP_ALIVE_INTERVAL, new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                KeepAliveDaemon.this.run();
+            }
+        });
+    }
 
-	private Timer timer = null;
+    public void run() {
+        // 极端情况下本次循环内可能执行时间超过了时间间隔，此处是防止在前一
+        // 次还没有运行完的情况下又重复过劲行，从而出现无法预知的错误
+        if (!this._excuting) {
+            boolean willStop = false;
 
-	public static KeepAliveDaemon getInstance()
-	{
-		if (instance == null)
-			instance = new KeepAliveDaemon();
-		return instance;
-	}
+            this._excuting = true;
+            if (ClientCoreSDK.DEBUG)
+                Log.i(TAG, "【IMCORE】心跳线程执行中...");
+            int code = LocalUDPDataSender.getInstance().sendKeepAlive();
 
-	private KeepAliveDaemon()
-	{
-		init();
-	}
+            boolean isInitialedForKeepAlive = this.lastGetKeepAliveResponseFromServerTimstamp == 0L;
+            if ((code == 0) && (this.lastGetKeepAliveResponseFromServerTimstamp == 0L)) {
+                this.lastGetKeepAliveResponseFromServerTimstamp = System.currentTimeMillis();
+            }
 
-	private void init()
-	{
-		this.timer = new Timer(KEEP_ALIVE_INTERVAL, new ActionListener()
-		{
-			public void actionPerformed(ActionEvent e) {
-				KeepAliveDaemon.this.run();
-			}
-		});
-	}
+            if (!isInitialedForKeepAlive) {
+                long now = System.currentTimeMillis();
 
-	public void run()
-	{
-		// 极端情况下本次循环内可能执行时间超过了时间间隔，此处是防止在前一
-				// 次还没有运行完的情况下又重复过劲行，从而出现无法预知的错误
-		if (!this._excuting)
-		{
-			boolean willStop = false;
+                if (now - this.lastGetKeepAliveResponseFromServerTimstamp >= NETWORK_CONNECTION_TIME_OUT) {
+                    stop();
 
-			this._excuting = true;
-			if (ClientCoreSDK.DEBUG)
-				Log.i(TAG, "【IMCORE】心跳线程执行中...");
-			int code = LocalUDPDataSender.getInstance().sendKeepAlive();
+                    if (this.networkConnectionLostObserver != null) {
+                        this.networkConnectionLostObserver.update(null, null);
+                    }
+                    willStop = true;
+                }
+            }
 
-			boolean isInitialedForKeepAlive = this.lastGetKeepAliveResponseFromServerTimstamp == 0L;
-			if ((code == 0) && (this.lastGetKeepAliveResponseFromServerTimstamp == 0L)) {
-				this.lastGetKeepAliveResponseFromServerTimstamp = System.currentTimeMillis();
-			}
+            this._excuting = false;
+            if (willStop) {
+                this.timer.stop();
+            }
+        }
+    }
 
-			if (!isInitialedForKeepAlive)
-			{
-				long now = System.currentTimeMillis();
+    public void stop() {
+        if (this.timer != null) {
+            this.timer.stop();
+        }
+        this.keepAliveRunning = false;
+        this.lastGetKeepAliveResponseFromServerTimstamp = 0L;
+    }
 
-				if (now - this.lastGetKeepAliveResponseFromServerTimstamp >= NETWORK_CONNECTION_TIME_OUT)
-				{
-					stop();
+    public void start(boolean immediately) {
+        stop();
 
-					if (this.networkConnectionLostObserver != null) {
-						this.networkConnectionLostObserver.update(null, null);
-					}
-					willStop = true;
-				}
-			}
+        if (immediately)
+            this.timer.setInitialDelay(0);
+        else
+            this.timer.setInitialDelay(KEEP_ALIVE_INTERVAL);
 
-			this._excuting = false;
-			if (willStop)
-			{
-				this.timer.stop();
-			}
-		}
-	}
+        this.timer.start();
+        this.keepAliveRunning = true;
+    }
 
-	public void stop()
-	{
-		if (this.timer != null) {
-			this.timer.stop();
-		}
-		this.keepAliveRunning = false;
-		this.lastGetKeepAliveResponseFromServerTimstamp = 0L;
-	}
+    public boolean isKeepAliveRunning() {
+        return this.keepAliveRunning;
+    }
 
-	public void start(boolean immediately)
-	{
-		stop();
+    public void updateGetKeepAliveResponseFromServerTimstamp() {
+        this.lastGetKeepAliveResponseFromServerTimstamp = System.currentTimeMillis();
+    }
 
-		if (immediately)
-			this.timer.setInitialDelay(0);
-		else
-			this.timer.setInitialDelay(KEEP_ALIVE_INTERVAL);
-		
-		this.timer.start();
-		this.keepAliveRunning = true;
-	}
-
-	public boolean isKeepAliveRunning()
-	{
-		return this.keepAliveRunning;
-	}
-
-	public void updateGetKeepAliveResponseFromServerTimstamp()
-	{
-		this.lastGetKeepAliveResponseFromServerTimstamp = System.currentTimeMillis();
-	}
-
-	public void setNetworkConnectionLostObserver(Observer networkConnectionLostObserver)
-	{
-		this.networkConnectionLostObserver = networkConnectionLostObserver;
-	}
+    public void setNetworkConnectionLostObserver(Observer networkConnectionLostObserver) {
+        this.networkConnectionLostObserver = networkConnectionLostObserver;
+    }
 }

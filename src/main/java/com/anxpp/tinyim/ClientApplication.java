@@ -2,10 +2,10 @@ package com.anxpp.tinyim;
 
 import com.anxpp.tinyim.client.ChatBaseEventImpl;
 import com.anxpp.tinyim.client.ClientCoreSDK;
-import com.anxpp.tinyim.client.sdk.conf.ConfigEntity;
-import com.anxpp.tinyim.client.sdk.core.LocalUDPDataSender;
 import com.anxpp.tinyim.client.sdk.ChatTransDataEventImpl;
 import com.anxpp.tinyim.client.sdk.MessageQoSEventImpl;
+import com.anxpp.tinyim.client.sdk.conf.ConfigEntity;
+import com.anxpp.tinyim.client.sdk.core.LocalUDPDataSender;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
